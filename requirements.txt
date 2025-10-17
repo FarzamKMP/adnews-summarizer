@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+requests
+beautifulsoup4
+feedparser
+newspaper3k
+apscheduler
+sqlalchemy
+pydantic
+google-generativeai
