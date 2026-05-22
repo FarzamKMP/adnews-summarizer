@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AdDigest — Jonas AI Advisor</title>
+  <title>AdDigest — Jonas AI</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -16,23 +16,24 @@
 
   <div class="page">
     <h1>Jonas AI Advisor</h1>
-    <p class="subtitle">Internal strategic advisor — responds in the style of Jonas Bailly. <strong>For internal use only. Not the real Jonas.</strong></p>
+    <p class="subtitle">Strategic advisor in the style of Jonas Bailly — MD, Jung von Matt HAVEL.</p>
 
-    <div class="card" style="margin-bottom:8px;padding:12px 16px;font-size:.82rem;color:var(--text-muted);border-left:3px solid var(--accent2)">
-      This tool operates as a Jonas-style strategic advisory aid for internal use. Drafts generated here are clearly labelled [DRAFT].
+    <div class="info-banner">
+      Internal tool only. Responds in Jonas's style. Drafts for publication are labelled [DRAFT].
     </div>
 
-    <div id="chat-window" class="chat-window">
-      <div class="msg assistant">Hello. I'm ready to assist with strategic questions, campaign thinking, client tension analysis, or any agency-related topics — in the style of Jonas Bailly. How can I help?</div>
+    <div id="chat-window" class="chat-window" style="margin-top:16px">
+      <div class="msg assistant">Hallo! Ich bin bereit — strategische Fragen, Kampagnen-Thinking, Client-Tension-Analyse oder Agenturthemen. Womit kann ich helfen?</div>
     </div>
 
     <div class="chat-input-row">
-      <textarea id="msg-input" placeholder="Ask a strategic question, request a draft, think through a brief..." rows="2"></textarea>
+      <textarea id="msg-input" placeholder="Ask a strategic question, request a draft, think through a brief…" rows="2"></textarea>
       <button id="send-btn">Send</button>
     </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
       <button id="clear-btn" class="secondary small">New conversation</button>
-      <span id="chat-status" class="status" style="margin-top:0;line-height:2"></span>
+      <span id="chat-status" class="status" style="margin:0"></span>
     </div>
   </div>
 
@@ -41,11 +42,11 @@
     let conversationId = null;
 
     const chatWindow = document.getElementById('chat-window');
-    const input = document.getElementById('msg-input');
-    const sendBtn = document.getElementById('send-btn');
-    const statusEl = document.getElementById('chat-status');
+    const input      = document.getElementById('msg-input');
+    const sendBtn    = document.getElementById('send-btn');
+    const statusEl   = document.getElementById('chat-status');
 
-    function addMessage(role, text) {
+    function addMsg(role, text) {
       const d = document.createElement('div');
       d.className = `msg ${role}`;
       d.textContent = text;
@@ -54,32 +55,33 @@
       return d;
     }
 
-    async function sendMessage() {
+    async function send() {
       const msg = input.value.trim();
       if (!msg) return;
       input.value = '';
       input.disabled = true;
       sendBtn.disabled = true;
-      addMessage('user', msg);
-      const thinking = addMessage('assistant', '...');
-      statusEl.textContent = 'Thinking...';
+      addMsg('user', msg);
+      const thinking = addMsg('assistant', '…');
+      statusEl.textContent = 'Thinking';
       statusEl.className = 'status loading';
 
       try {
         const res = await fetch(`${API}/api/chat`, {
-          method: 'POST', headers: {'Content-Type':'application/json'},
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: msg, conversation_id: conversationId })
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         conversationId = data.conversation_id;
         thinking.textContent = data.reply;
-        statusEl.textContent = data.rag_context_used ? 'Answer used knowledge base context.' : '';
-        statusEl.className = 'status';
-      } catch(e) {
+        statusEl.textContent = data.rag_context_used ? 'Used knowledge base' : '';
+        statusEl.className = 'status success';
+      } catch (e) {
         thinking.textContent = 'Error: ' + e.message;
         thinking.style.color = 'var(--danger)';
         statusEl.textContent = '';
+        statusEl.className = 'status';
       } finally {
         input.disabled = false;
         sendBtn.disabled = false;
@@ -87,14 +89,12 @@
       }
     }
 
-    sendBtn.addEventListener('click', sendMessage);
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
+    sendBtn.addEventListener('click', send);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 
     document.getElementById('clear-btn').addEventListener('click', () => {
       conversationId = null;
-      chatWindow.innerHTML = '<div class="msg assistant">New conversation started. How can I help?</div>';
+      chatWindow.innerHTML = '<div class="msg assistant">New conversation. How can I help?</div>';
       statusEl.textContent = '';
     });
   </script>

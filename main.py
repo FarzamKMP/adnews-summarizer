@@ -5,7 +5,7 @@ Run: uvicorn main:app --reload --port 8000
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -71,9 +71,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve frontend
-if Path("web").exists():
-    app.mount("/web", StaticFiles(directory="web", html=True), name="web")
+# Serve frontend — works both in dev and PyInstaller bundle
+import sys as _sys
+_base = Path(_sys._MEIPASS) if getattr(_sys, "frozen", False) else Path(__file__).parent
+_web_dir = _base / "web"
+if _web_dir.exists():
+    app.mount("/web", StaticFiles(directory=str(_web_dir), html=True), name="web")
 
 
 # ════════════════════════════════════════════════════════════
@@ -141,9 +144,27 @@ class ChatRequest(BaseModel):
 def on_start():
     scheduler = BackgroundScheduler()
     scheduler.add_job(_background_scrape, "interval", days=7)
+    scheduler.add_job(_cleanup_old_news, "interval", days=7, next_run_time=datetime.utcnow())
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info("Weekly scheduler started")
+    logger.info("Weekly scheduler started (scrape + cleanup)")
+
+
+def _cleanup_old_news():
+    """Delete news articles older than 7 days to keep the DB light."""
+    from sqlalchemy import delete
+    db = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        result = db.execute(
+            delete(NewsItem).where(NewsItem.published_at < cutoff)
+        )
+        db.commit()
+        logger.info(f"Cleanup: deleted {result.rowcount} old articles")
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+    finally:
+        db.close()
 
 
 def _background_scrape():

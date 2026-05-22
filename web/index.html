@@ -6,62 +6,13 @@
   <title>AdDigest — News Intelligence</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    .run-hero {
-      text-align: center;
-      padding: 40px 0 32px;
-    }
-    .run-hero h1 { margin-bottom: 10px; }
-    .run-hero p { color: var(--text-muted); margin-bottom: 28px; font-size: 0.95rem; }
-    #run-btn {
-      font-size: 1.1rem;
-      padding: 14px 40px;
-      border-radius: 50px;
-      background: linear-gradient(135deg, var(--accent), #8b5cf6);
-      box-shadow: 0 4px 20px rgba(108,99,255,.35);
-    }
-    #run-btn:disabled { box-shadow: none; }
-
-    .progress-bar {
-      height: 3px; background: var(--border); border-radius: 2px;
-      margin: 24px 0; overflow: hidden; display: none;
-    }
-    .progress-bar .fill {
-      height: 100%; width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 2px;
-      transition: width .4s ease;
-    }
-
-    .step-status {
-      font-size: 0.85rem; color: var(--text-muted);
-      text-align: center; min-height: 20px; margin-bottom: 24px;
-    }
-
-    /* Article list table-style */
-    .articles-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    .articles-table th {
-      text-align: left; font-size: 0.78rem; font-weight: 600;
-      color: var(--text-muted); padding: 8px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .articles-table td {
-      padding: 10px 12px; font-size: 0.88rem;
-      border-bottom: 1px solid var(--border); vertical-align: top;
-    }
-    .articles-table tr:last-child td { border-bottom: none; }
-    .articles-table tr:hover td { background: var(--surface2); }
-    .articles-table .title-cell a { color: var(--text); font-weight: 500; }
-    .articles-table .title-cell a:hover { color: var(--accent2); }
-    .articles-table .date-cell { color: var(--text-muted); white-space: nowrap; min-width: 100px; }
-    .articles-table .source-cell { min-width: 110px; }
-    .articles-table .summary-cell { color: var(--text-muted); font-size: 0.82rem; line-height: 1.5; }
-
-    .linkedin-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 14px;
-    }
+    .run-hero { text-align: center; padding: 48px 0 36px; }
+    .run-hero h1 { margin-bottom: 10px; font-size: 2rem; }
+    .run-hero p { margin-bottom: 32px; line-height: 1.7; }
+    #run-btn { font-size: 1rem; padding: 14px 44px; }
+    .step-status { font-size: .85rem; color: var(--text-muted); text-align: center; min-height: 22px; margin-bottom: 20px; }
+    .linkedin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .linkedin-header h2 { margin-bottom: 0; }
-    .copy-row { display: flex; gap: 8px; }
   </style>
 </head>
 <body>
@@ -74,24 +25,22 @@
 
   <div class="page">
 
-    <!-- Hero / run button -->
     <div class="run-hero">
       <h1>Advertising News Digest</h1>
-      <p>Crawls Adweek, AdAge, Digiday, MarketingWeek, CampaignLive, WARC, W&amp;V and Horizont<br>
-         for the last 7 days — then builds a LinkedIn article automatically.</p>
+      <p class="subtitle">Crawls Adweek, AdAge, Digiday, MarketingWeek, CampaignLive,<br>WARC, W&amp;V and Horizont — last 7 days — then builds a LinkedIn article.</p>
       <button id="run-btn">Run Full Digest</button>
     </div>
 
-    <!-- Progress -->
-    <div class="progress-bar" id="progress-bar"><div class="fill" id="progress-fill"></div></div>
+    <div class="progress-bar" id="progress-bar" style="display:none">
+      <div class="fill" id="progress-fill"></div>
+    </div>
     <div class="step-status" id="step-status"></div>
 
-    <!-- Results: articles list -->
     <div id="articles-section" style="display:none">
       <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:16px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px">
+        <div style="padding:16px 20px 14px;border-bottom:1px solid rgba(180,200,240,.35);display:flex;align-items:center;gap:10px">
           <h2 style="margin:0">Articles Found</h2>
-          <span id="articles-count" style="font-size:.82rem;color:var(--text-muted)"></span>
+          <span id="articles-count" style="font-size:.8rem;color:var(--text-muted)"></span>
         </div>
         <table class="articles-table" id="articles-table">
           <thead>
@@ -107,16 +56,14 @@
       </div>
     </div>
 
-    <!-- Results: LinkedIn article -->
-    <div id="linkedin-section" style="display:none; margin-top:24px">
+    <div id="linkedin-section" style="display:none;margin-top:24px">
       <div class="card">
         <div class="linkedin-header">
           <h2>Generated LinkedIn Article</h2>
-          <div class="copy-row">
-            <button id="copy-btn" class="secondary small">Copy article</button>
-          </div>
+          <button id="copy-btn" class="secondary small">Copy</button>
         </div>
         <div id="article-box" class="article-box"></div>
+        <div id="sources-list" style="margin-top:14px;font-size:.80rem;color:var(--text-muted);line-height:1.9"></div>
       </div>
     </div>
 
@@ -124,79 +71,80 @@
 
   <script>
     const API = 'http://127.0.0.1:8000';
-    const runBtn  = document.getElementById('run-btn');
-    const stepEl  = document.getElementById('step-status');
-    const progBar = document.getElementById('progress-bar');
-    const progFill= document.getElementById('progress-fill');
+    const runBtn   = document.getElementById('run-btn');
+    const stepEl   = document.getElementById('step-status');
+    const progBar  = document.getElementById('progress-bar');
+    const progFill = document.getElementById('progress-fill');
 
     function setStep(msg, pct) {
       stepEl.textContent = msg;
+      stepEl.className = 'step-status' + (pct === 0 ? ' error' : '');
       progFill.style.width = pct + '%';
     }
 
     function fmtDate(iso) {
       if (!iso) return '—';
-      const d = new Date(iso);
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
     function renderArticles(articles) {
       document.getElementById('articles-section').style.display = '';
-      document.getElementById('articles-count').textContent = `${articles.length} articles`;
+      document.getElementById('articles-count').textContent = articles.length + ' articles';
       const tbody = document.getElementById('articles-body');
       tbody.innerHTML = '';
-      articles.forEach((a, i) => {
+      articles.forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="title-cell"><a href="${a.url}" target="_blank">${a.title}</a></td>
-          <td class="source-cell"><span class="source-badge">${a.source}</span></td>
+          <td><span class="source-badge">${a.source}</span></td>
           <td class="date-cell">${fmtDate(a.published_at)}</td>
           <td class="summary-cell">${a.summary || ''}</td>`;
         tbody.appendChild(tr);
       });
     }
 
-    function renderLinkedIn(text) {
+    function renderLinkedIn(data) {
       document.getElementById('linkedin-section').style.display = '';
-      document.getElementById('article-box').textContent = text;
+      document.getElementById('article-box').textContent = data.linkedin_article;
+      document.getElementById('sources-list').innerHTML =
+        '<strong>Sources:</strong><br>' +
+        data.sources.map(s =>
+          `<a href="${s.url}" target="_blank" style="color:var(--accent)">${s.title}</a> <span class="source-badge">${s.source}</span>`
+        ).join('<br>');
     }
 
     runBtn.addEventListener('click', async () => {
       runBtn.disabled = true;
       progBar.style.display = '';
+      progFill.style.background = 'linear-gradient(90deg, var(--accent), var(--accent2))';
       document.getElementById('articles-section').style.display = 'none';
       document.getElementById('linkedin-section').style.display = 'none';
 
       try {
-        setStep('Crawling all 8 sources for the last 7 days...', 15);
+        setStep('Crawling all 8 sources for the last 7 days…', 20);
         const res = await fetch(`${API}/api/digest`, { method: 'POST' });
-
         if (!res.ok) {
           const err = await res.json().catch(() => ({ detail: res.statusText }));
           throw new Error(err.detail || res.statusText);
         }
-
-        setStep('Summarizing articles and generating LinkedIn article...', 70);
+        setStep('Generating LinkedIn article…', 80);
         const data = await res.json();
-        setStep(`Done — ${data.articles_found} articles found, article generated.`, 100);
-
+        setStep(`Done — ${data.articles_found} articles · article ready`, 100);
         renderArticles(data.articles);
-        renderLinkedIn(data.linkedin_article);
-
+        renderLinkedIn(data);
       } catch (e) {
-        setStep('Error: ' + e.message, 0);
         progFill.style.background = 'var(--danger)';
+        setStep('Error: ' + e.message, 0);
       } finally {
         runBtn.disabled = false;
       }
     });
 
     document.getElementById('copy-btn').addEventListener('click', () => {
-      const text = document.getElementById('article-box').textContent;
-      navigator.clipboard.writeText(text).then(() => {
+      navigator.clipboard.writeText(document.getElementById('article-box').textContent).then(() => {
         const btn = document.getElementById('copy-btn');
         btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy article'; }, 2000);
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
       });
     });
   </script>
