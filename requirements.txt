@@ -1,10 +1,27 @@
+# Web framework
 fastapi
 uvicorn[standard]
+python-multipart
+
+# AI / Gemini (new SDK)
+google-genai>=2.0.0
+
+# Vector DB
+chromadb>=0.5.0
+
+# News scraping
 requests
 beautifulsoup4
 feedparser
 newspaper3k
-apscheduler
+lxml_html_clean
+
+# Database
 sqlalchemy
 pydantic
-google-generativeai
+
+# Scheduler
+apscheduler
+
+# Environment
+python-dotenv

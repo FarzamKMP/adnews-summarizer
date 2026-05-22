@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AdDigest — Persona Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <span class="logo">AdDigest</span>
+    <a href="index.html">News</a>
+    <a href="chat.html">Jonas AI</a>
+    <a href="persona.html" class="active">Persona</a>
+  </nav>
+
+  <div class="page">
+    <h1>Persona Manager</h1>
+    <p class="subtitle">Manage Jonas Bailly's knowledge base. Notes tagged as "seed" are the built-in profile (editable).</p>
+
+    <!-- Add note -->
+    <div class="card" style="margin-bottom:24px">
+      <h2>Add Note</h2>
+      <div class="form-row" style="flex-direction:column;gap:10px">
+        <input type="text" id="note-title" placeholder="Title (e.g. Communication preference, Value, Decision rule...)" />
+        <textarea id="note-content" placeholder="Describe the trait, preference, rule or example..."></textarea>
+        <input type="text" id="note-tags" placeholder="Tags (comma-separated, e.g. style, values, decisions)" />
+        <div style="display:flex;gap:8px">
+          <button id="add-note-btn">Add to Knowledge Base</button>
+          <button id="reindex-btn" class="secondary">Re-index all</button>
+          <span id="add-status" class="status" style="margin-top:0;line-height:2.2"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="section-header">
+      <h2>Knowledge Base</h2>
+      <input type="text" id="filter-tag" placeholder="Filter by tag..." style="width:160px;padding:6px 10px;font-size:0.85rem" />
+      <button id="filter-btn" class="secondary small">Filter</button>
+      <button id="clear-filter-btn" class="secondary small">All</button>
+    </div>
+
+    <div id="notes-list"></div>
+  </div>
+
+  <!-- Edit modal -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:90%;max-width:560px">
+      <h2 style="margin-bottom:16px">Edit Note</h2>
+      <input type="hidden" id="edit-id" />
+      <input type="text" id="edit-title" style="width:100%;margin-bottom:10px" placeholder="Title" />
+      <textarea id="edit-content" style="min-height:120px;margin-bottom:10px" placeholder="Content"></textarea>
+      <input type="text" id="edit-tags" style="width:100%;margin-bottom:16px" placeholder="Tags" />
+      <div style="display:flex;gap:8px">
+        <button id="save-edit-btn">Save</button>
+        <button id="cancel-edit-btn" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://127.0.0.1:8000';
+
+    async function loadNotes(tag) {
+      const url = tag ? `${API}/api/persona/notes?tag=${encodeURIComponent(tag)}` : `${API}/api/persona/notes`;
+      const res = await fetch(url);
+      const notes = await res.json();
+      renderNotes(notes);
+    }
+
+    function renderNotes(notes) {
+      const list = document.getElementById('notes-list');
+      list.innerHTML = '';
+      if (!notes.length) {
+        list.innerHTML = '<p class="status">No notes found.</p>';
+        return;
+      }
+      notes.forEach(n => {
+        const d = document.createElement('div');
+        d.className = 'card note-card' + (n.is_seed ? ' seed' : '');
+        const tags = n.tags ? n.tags.split(',').filter(Boolean).map(t => `<span class="tag">${t.trim()}</span>`).join('') : '';
+        const seedBadge = n.is_seed ? '<span class="tag" style="color:var(--accent)">seed</span>' : '';
+        d.innerHTML = `
+          <h3>${n.title} ${seedBadge}</h3>
+          <p style="font-size:.88rem;color:var(--text-muted);margin:8px 0;white-space:pre-wrap">${n.content}</p>
+          <div>${tags}</div>
+          <div class="meta"><span>${new Date(n.created_at).toLocaleDateString('en-US',{dateStyle:'medium'})}</span></div>
+          <div class="actions">
+            <button class="secondary small" onclick="openEdit('${n.id}','${escQ(n.title)}','${escQ(n.content)}','${escQ(n.tags)}')">Edit</button>
+            <button class="danger small" onclick="deleteNote('${n.id}')">Delete</button>
+          </div>`;
+        list.appendChild(d);
+      });
+    }
+
+    function escQ(s) { return (s||'').replace(/'/g,"\\'").replace(/\n/g,'\\n'); }
+
+    document.getElementById('add-note-btn').addEventListener('click', async () => {
+      const title = document.getElementById('note-title').value.trim();
+      const content = document.getElementById('note-content').value.trim();
+      const tags = document.getElementById('note-tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+      const st = document.getElementById('add-status');
+      if (!title || !content) { st.textContent = 'Title and content required.'; st.className='status error'; return; }
+      st.textContent = 'Adding...'; st.className = 'status loading';
+      try {
+        const res = await fetch(`${API}/api/persona/notes`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({title, content, tags})
+        });
+        if (!res.ok) throw new Error(await res.text());
+        st.textContent = 'Note added and indexed.'; st.className = 'status success';
+        document.getElementById('note-title').value = '';
+        document.getElementById('note-content').value = '';
+        document.getElementById('note-tags').value = '';
+        loadNotes();
+      } catch(e) { st.textContent = 'Error: '+e.message; st.className='status error'; }
+    });
+
+    document.getElementById('reindex-btn').addEventListener('click', async () => {
+      const st = document.getElementById('add-status');
+      st.textContent = 'Re-indexing...'; st.className = 'status loading';
+      try {
+        const res = await fetch(`${API}/api/rag/reindex`, {method:'POST'});
+        const d = await res.json();
+        st.textContent = `Re-indexed ${d.reindexed} notes.`; st.className = 'status success';
+      } catch(e) { st.textContent = 'Error: '+e.message; st.className='status error'; }
+    });
+
+    document.getElementById('filter-btn').addEventListener('click', () => {
+      loadNotes(document.getElementById('filter-tag').value.trim());
+    });
+    document.getElementById('clear-filter-btn').addEventListener('click', () => {
+      document.getElementById('filter-tag').value = '';
+      loadNotes();
+    });
+
+    async function deleteNote(id) {
+      if (!confirm('Delete this note?')) return;
+      await fetch(`${API}/api/persona/notes/${id}`, {method:'DELETE'});
+      loadNotes();
+    }
+
+    function openEdit(id, title, content, tags) {
+      document.getElementById('edit-id').value = id;
+      document.getElementById('edit-title').value = title.replace(/\\n/g,'\n');
+      document.getElementById('edit-content').value = content.replace(/\\n/g,'\n');
+      document.getElementById('edit-tags').value = tags;
+      document.getElementById('modal').style.display = 'flex';
+    }
+
+    document.getElementById('cancel-edit-btn').addEventListener('click', () => {
+      document.getElementById('modal').style.display = 'none';
+    });
+
+    document.getElementById('save-edit-btn').addEventListener('click', async () => {
+      const id = document.getElementById('edit-id').value;
+      const title = document.getElementById('edit-title').value.trim();
+      const content = document.getElementById('edit-content').value.trim();
+      const tags = document.getElementById('edit-tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+      await fetch(`${API}/api/persona/notes/${id}`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({title, content, tags})
+      });
+      document.getElementById('modal').style.display = 'none';
+      loadNotes();
+    });
+
+    loadNotes();
+  </script>
+</body>
+</html>
